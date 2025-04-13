@@ -1,38 +1,46 @@
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import os
 
-def plot_profit_step(df_middle, font_path):
-    fig, ax = plt.subplots()
-    labels = list(df_middle.keys())
-    values = [v['当期'] for v in df_middle.values()]
+def plot_profit_step_only(df_middle, font_path):
+    df = pd.DataFrame(df_middle)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    values = list(df["当期"])
+    labels = df.index.tolist()
     ax.bar(labels, values)
-    output_path = "/mnt/data/profit_step.png"
-    plt.title("利益ステップ")
-    plt.savefig(output_path)
+    if os.path.exists(font_path):
+        plt.rcParams["font.family"] = font_path
+    image_path = "/mnt/data/profit_step_only.png"
+    plt.savefig(image_path)
     plt.close()
-    return output_path
+    return image_path
+
+def plot_cf_waterfall_labeled(cf_values, font_path, title):
+    labels = [item["label"] for item in cf_values]
+    values = [item["amount"] for item in cf_values]
+    fig, ax = plt.subplots(figsize=(10, 6))
+    cum_values = [0]
+    for v in values[:-1]:
+        cum_values.append(cum_values[-1] + v)
+    for i in range(len(values)):
+        ax.bar(labels[i], values[i], bottom=cum_values[i] if i > 0 else 0)
+    if os.path.exists(font_path):
+        plt.rcParams["font.family"] = font_path
+    ax.set_title(title)
+    image_path = "/mnt/data/cf_waterfall_labeled.png"
+    plt.savefig(image_path)
+    plt.close()
+    return image_path
 
 def plot_bs_vertical_grouped_stacked(bs_data, font_path, years, title):
-    fig, ax = plt.subplots()
-    categories = list(bs_data.keys())
-    for i, cat in enumerate(categories):
-        vals = bs_data[cat]
-        ax.bar(years, vals, label=cat)
-    output_path = "/mnt/data/bs_stacked.png"
-    plt.title(title)
-    plt.legend()
-    plt.savefig(output_path)
+    df = pd.DataFrame(bs_data)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    df.T.plot(kind="bar", stacked=True, ax=ax)
+    if os.path.exists(font_path):
+        plt.rcParams["font.family"] = font_path
+    ax.set_title(title)
+    image_path = "/mnt/data/bs_vertical_grouped_stacked.png"
+    plt.savefig(image_path)
     plt.close()
-    return output_path
-
-def plot_cf_waterfall(cf_values, font_path, title):
-    fig, ax = plt.subplots()
-    labels = [d["label"] for d in cf_values]
-    amounts = [d["amount"] for d in cf_values]
-    ax.bar(labels, amounts)
-    output_path = "/mnt/data/cf_waterfall.png"
-    plt.title(title)
-    plt.savefig(output_path)
-    plt.close()
-    return output_path
+    return image_path
