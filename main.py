@@ -1,58 +1,58 @@
 
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import List, Dict, Optional
-from financial_graph_generators import (
-    plot_bs_vertical_grouped_stacked,
-    plot_profit_step_only,
-    plot_cf_waterfall,
-)
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, ValidationError
+from typing import Any, Dict
+from financial_graph_generators import plot_profit_step, plot_bs_vertical_grouped_stacked, plot_cf_waterfall
 
 app = FastAPI()
 
-class BSInput(BaseModel):
-    bs_data: Dict[str, Dict[str, List[float]]]
-    font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
-    years: List[str]
-    title: str
-
 class ProfitStepInput(BaseModel):
     df_middle: Dict[str, Dict[str, float]]
-    font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
+    font_path: str
 
-class CFItem(BaseModel):
-    label: str
-    amount: float
-
-class CFInput(BaseModel):
-    cf_values: List[CFItem]
-    font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
+class BSInput(BaseModel):
+    bs_data: Dict[str, Dict[str, list]]
+    font_path: str
+    years: list
     title: str
 
-@app.post("/plot_bs")
-def plot_bs(input_data: BSInput):
-    output_path = plot_bs_vertical_grouped_stacked(
-        input_data.bs_data,
-        input_data.years,
-        input_data.font_path,
-        input_data.title
-    )
-    return {"path": output_path}
+class CFInput(BaseModel):
+    cf_values: list
+    font_path: str
+    title: str
 
 @app.post("/plot_profit_step")
-def plot_profit_step(input_data: ProfitStepInput):
-    output_path = plot_profit_step_only(
-        input_data.df_middle,
-        input_data.font_path
-    )
-    return {"path": output_path}
+async def plot_profit_step_endpoint(payload: Dict[str, Any]):
+    data = payload.get("data")
+    if not data:
+        raise HTTPException(status_code=400, detail="Missing 'data' field")
+    try:
+        validated_data = ProfitStepInput(**data)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+    image_path = plot_profit_step(validated_data.df_middle, validated_data.font_path)
+    return {"image_path": image_path}
+
+@app.post("/plot_bs")
+async def plot_bs_endpoint(payload: Dict[str, Any]):
+    data = payload.get("data")
+    if not data:
+        raise HTTPException(status_code=400, detail="Missing 'data' field")
+    try:
+        validated_data = BSInput(**data)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+    image_path = plot_bs_vertical_grouped_stacked(validated_data.bs_data, validated_data.font_path, validated_data.years, validated_data.title)
+    return {"image_path": image_path}
 
 @app.post("/plot_cf")
-def plot_cf(input_data: CFInput):
-    cf_data = [item.dict() for item in input_data.cf_values]
-    output_path = plot_cf_waterfall(
-        cf_data,
-        input_data.font_path,
-        input_data.title
-    )
-    return {"path": output_path}
+async def plot_cf_endpoint(payload: Dict[str, Any]):
+    data = payload.get("data")
+    if not data:
+        raise HTTPException(status_code=400, detail="Missing 'data' field")
+    try:
+        validated_data = CFInput(**data)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+    image_path = plot_cf_waterfall(validated_data.cf_values, validated_data.font_path, validated_data.title)
+    return {"image_path": image_path}
