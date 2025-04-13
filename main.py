@@ -1,71 +1,61 @@
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Dict, Optional
-import json
-import os
-
+from typing import Dict, List, Union
 from financial_graph_generators import (
-    plot_bs_vertical_grouped_stacked_categorized,
+    plot_bs_vertical_grouped_stacked,
     plot_profit_step_chart,
-    plot_cashflow_waterfall
+    plot_cf_waterfall_chart
 )
 
 app = FastAPI()
 
-FONT_PATH_DEFAULT = "./fonts/NotoSerifJP-Regular.ttf"
+DEFAULT_FONT_PATH = "/mnt/data/NotoSerifJP-Regular.ttf"
 
+# ====== モデル定義 ======
 class BSInput(BaseModel):
-    bs_data: Dict
-    font_path: Optional[str] = None
+    bs_data: Dict[str, Dict[str, Dict[str, float]]]
+    font_path: str = DEFAULT_FONT_PATH
     years: List[str]
     title: str
 
 class ProfitStepInput(BaseModel):
-    df_middle: Dict
-    font_path: Optional[str] = None
+    df_middle: Dict[str, Dict[str, float]]
+    font_path: str = DEFAULT_FONT_PATH
 
-class CFItem(BaseModel):
+class CFEntry(BaseModel):
     label: str
     amount: float
 
 class CFInput(BaseModel):
-    cf_values: List[CFItem]
-    font_path: Optional[str] = None
+    cf_values: List[CFEntry]
+    font_path: str = DEFAULT_FONT_PATH
     title: str
 
+# ====== エンドポイント定義 ======
 @app.post("/plot_bs")
 def plot_bs(input_data: BSInput):
-    try:
-        font_path = input_data.font_path or FONT_PATH_DEFAULT
-        return plot_bs_vertical_grouped_stacked_categorized(
-            input_data.bs_data,
-            font_path,
-            input_data.years,
-            input_data.title
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"貸借対照表グラフ生成エラー: {str(e)}")
+    path = plot_bs_vertical_grouped_stacked(
+        bs_data=input_data.bs_data,
+        font_path=input_data.font_path,
+        years=input_data.years,
+        title=input_data.title
+    )
+    return {"image_path": path}
 
 @app.post("/plot_profit_step")
 def plot_profit_step(input_data: ProfitStepInput):
-    try:
-        font_path = input_data.font_path or FONT_PATH_DEFAULT
-        return plot_profit_step_chart(
-            input_data.df_middle,
-            font_path
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"利益ステップグラフ生成エラー: {str(e)}")
+    path = plot_profit_step_chart(
+        df_middle=input_data.df_middle,
+        font_path=input_data.font_path
+    )
+    return {"image_path": path}
 
 @app.post("/plot_cf")
 def plot_cf(input_data: CFInput):
-    try:
-        font_path = input_data.font_path or FONT_PATH_DEFAULT
-        return plot_cashflow_waterfall(
-            input_data.cf_values,
-            font_path,
-            input_data.title
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"キャッシュフローグラフ生成エラー: {str(e)}")
+    cf_dict = [{"label": item.label, "amount": item.amount} for item in input_data.cf_values]
+    path = plot_cf_waterfall_chart(
+        cf_values=cf_dict,
+        font_path=input_data.font_path,
+        title=input_data.title
+    )
+    return {"image_path": path}
