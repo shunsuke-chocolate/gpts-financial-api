@@ -1,50 +1,43 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+
+from fastapi import FastAPI, Request
 from financial_graph_generators import (
-    plot_bs_vertical_grouped_stacked_categorized,
     plot_profit_step_chart,
-    plot_cashflow_waterfall
+    plot_bs_vertical_grouped_stacked,
+    plot_cf_waterfall_labeled
 )
-import pandas as pd
+import json
 
 app = FastAPI()
 
-class BSInput(BaseModel):
-    bs_data: dict
-    font_path: str
-    years: list
-    title: str
-
-class ProfitStepInput(BaseModel):
-    df_middle: dict
-    font_path: str
-
-class CFInput(BaseModel):
-    cf_values: list
-    font_path: str
-    title: str
+@app.post("/plot_profit_step")
+async def plot_profit_step(request: Request):
+    body = await request.json()
+    df_middle = body["df_middle"]
+    if isinstance(df_middle, str):
+        df_middle = json.loads(df_middle)
+    font_path = body.get("font_path", "./fonts/NotoSerifJP-Regular.ttf")
+    image_path = plot_profit_step_chart(df_middle, font_path)
+    return {"image_path": image_path}
 
 @app.post("/plot_bs")
-def call_plot_bs(input: BSInput):
-    path = plot_bs_vertical_grouped_stacked_categorized(
-        bs_data=input.bs_data,
-        font_path=input.font_path,
-        years=input.years,
-        title=input.title
-    )
-    return {"image_path": path}
-
-@app.post("/plot_profit_step")
-def call_plot_profit_step(input: ProfitStepInput):
-    df = pd.DataFrame(input.df_middle)
-    path = plot_profit_step_chart(df, input.font_path)
-    return {"image_path": path}
+async def plot_bs(request: Request):
+    body = await request.json()
+    bs_data = body["bs_data"]
+    if isinstance(bs_data, str):
+        bs_data = json.loads(bs_data)
+    font_path = body.get("font_path", "./fonts/NotoSerifJP-Regular.ttf")
+    years = body.get("years", [])
+    title = body.get("title", "")
+    image_path = plot_bs_vertical_grouped_stacked(bs_data, years, font_path, title)
+    return {"image_path": image_path}
 
 @app.post("/plot_cf")
-def call_plot_cf(input: CFInput):
-    path = plot_cashflow_waterfall(
-        cf_values=input.cf_values,
-        font_path=input.font_path,
-        title=input.title
-    )
-    return {"image_path": path}
+async def plot_cf(request: Request):
+    body = await request.json()
+    cf_values = body["cf_values"]
+    if isinstance(cf_values, str):
+        cf_values = json.loads(cf_values)
+    font_path = body.get("font_path", "./fonts/NotoSerifJP-Regular.ttf")
+    title = body.get("title", "")
+    image_path = plot_cf_waterfall_labeled(cf_values, font_path, title)
+    return {"image_path": image_path}
