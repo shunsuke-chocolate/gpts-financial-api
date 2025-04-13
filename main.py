@@ -1,43 +1,71 @@
 
-from fastapi import FastAPI, Request
-from financial_graph_generators import (
-    plot_profit_step_chart,
-    plot_bs_vertical_grouped_stacked,
-    plot_cf_waterfall_labeled
-)
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Dict, Optional
 import json
+import os
+
+from financial_graph_generators import (
+    plot_bs_vertical_grouped_stacked_categorized,
+    plot_profit_step_chart,
+    plot_cashflow_waterfall
+)
 
 app = FastAPI()
 
-@app.post("/plot_profit_step")
-async def plot_profit_step(request: Request):
-    body = await request.json()
-    df_middle = body["df_middle"]
-    if isinstance(df_middle, str):
-        df_middle = json.loads(df_middle)
-    font_path = body.get("font_path", "./fonts/NotoSerifJP-Regular.ttf")
-    image_path = plot_profit_step_chart(df_middle, font_path)
-    return {"image_path": image_path}
+FONT_PATH_DEFAULT = "./fonts/NotoSerifJP-Regular.ttf"
+
+class BSInput(BaseModel):
+    bs_data: Dict
+    font_path: Optional[str] = None
+    years: List[str]
+    title: str
+
+class ProfitStepInput(BaseModel):
+    df_middle: Dict
+    font_path: Optional[str] = None
+
+class CFItem(BaseModel):
+    label: str
+    amount: float
+
+class CFInput(BaseModel):
+    cf_values: List[CFItem]
+    font_path: Optional[str] = None
+    title: str
 
 @app.post("/plot_bs")
-async def plot_bs(request: Request):
-    body = await request.json()
-    bs_data = body["bs_data"]
-    if isinstance(bs_data, str):
-        bs_data = json.loads(bs_data)
-    font_path = body.get("font_path", "./fonts/NotoSerifJP-Regular.ttf")
-    years = body.get("years", [])
-    title = body.get("title", "")
-    image_path = plot_bs_vertical_grouped_stacked(bs_data, years, font_path, title)
-    return {"image_path": image_path}
+def plot_bs(input_data: BSInput):
+    try:
+        font_path = input_data.font_path or FONT_PATH_DEFAULT
+        return plot_bs_vertical_grouped_stacked_categorized(
+            input_data.bs_data,
+            font_path,
+            input_data.years,
+            input_data.title
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"貸借対照表グラフ生成エラー: {str(e)}")
+
+@app.post("/plot_profit_step")
+def plot_profit_step(input_data: ProfitStepInput):
+    try:
+        font_path = input_data.font_path or FONT_PATH_DEFAULT
+        return plot_profit_step_chart(
+            input_data.df_middle,
+            font_path
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"利益ステップグラフ生成エラー: {str(e)}")
 
 @app.post("/plot_cf")
-async def plot_cf(request: Request):
-    body = await request.json()
-    cf_values = body["cf_values"]
-    if isinstance(cf_values, str):
-        cf_values = json.loads(cf_values)
-    font_path = body.get("font_path", "./fonts/NotoSerifJP-Regular.ttf")
-    title = body.get("title", "")
-    image_path = plot_cf_waterfall_labeled(cf_values, font_path, title)
-    return {"image_path": image_path}
+def plot_cf(input_data: CFInput):
+    try:
+        font_path = input_data.font_path or FONT_PATH_DEFAULT
+        return plot_cashflow_waterfall(
+            input_data.cf_values,
+            font_path,
+            input_data.title
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"キャッシュフローグラフ生成エラー: {str(e)}")
