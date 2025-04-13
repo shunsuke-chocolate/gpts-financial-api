@@ -1,18 +1,24 @@
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import Dict, List
+from typing import List, Dict, Optional
 from financial_graph_generators import (
-    plot_profit_step,
-    plot_cf,
-    plot_bs_vertical_grouped_stacked
+    plot_bs_vertical_grouped_stacked,
+    plot_profit_step_only,
+    plot_cf_waterfall,
 )
 
 app = FastAPI()
 
+class BSInput(BaseModel):
+    bs_data: Dict[str, Dict[str, List[float]]]
+    font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
+    years: List[str]
+    title: str
+
 class ProfitStepInput(BaseModel):
     df_middle: Dict[str, Dict[str, float]]
-    font_path: str
+    font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
 
 class CFItem(BaseModel):
     label: str
@@ -20,36 +26,33 @@ class CFItem(BaseModel):
 
 class CFInput(BaseModel):
     cf_values: List[CFItem]
-    font_path: str
+    font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
     title: str
-
-class BSInput(BaseModel):
-    bs_data: Dict[str, Dict[str, float]]
-    font_path: str
-    years: List[str]
-    title: str
-
-@app.post("/plot_profit_step")
-def generate_profit_step_chart(data: ProfitStepInput):
-    try:
-        output_path = plot_profit_step(data.df_middle, data.font_path)
-        return {"image_path": output_path}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/plot_cf")
-def generate_cf_chart(data: CFInput):
-    try:
-        cf_dicts = [item.dict() for item in data.cf_values]
-        output_path = plot_cf(cf_dicts, data.font_path, data.title)
-        return {"image_path": output_path}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/plot_bs")
-def generate_bs_chart(data: BSInput):
-    try:
-        output_path = plot_bs_vertical_grouped_stacked(data.bs_data, data.font_path, data.years, data.title)
-        return {"image_path": output_path}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def plot_bs(input_data: BSInput):
+    output_path = plot_bs_vertical_grouped_stacked(
+        input_data.bs_data,
+        input_data.years,
+        input_data.font_path,
+        input_data.title
+    )
+    return {"path": output_path}
+
+@app.post("/plot_profit_step")
+def plot_profit_step(input_data: ProfitStepInput):
+    output_path = plot_profit_step_only(
+        input_data.df_middle,
+        input_data.font_path
+    )
+    return {"path": output_path}
+
+@app.post("/plot_cf")
+def plot_cf(input_data: CFInput):
+    cf_data = [item.dict() for item in input_data.cf_values]
+    output_path = plot_cf_waterfall(
+        cf_data,
+        input_data.font_path,
+        input_data.title
+    )
+    return {"path": output_path}
