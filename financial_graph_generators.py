@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
 # 出力先ディレクトリの作成
-output_dir = "/mnt/data"
+output_dir = "./output"
 os.makedirs(output_dir, exist_ok=True)
 
 # 1. 貸借対照表の縦型積み上げグラフ
