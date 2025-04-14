@@ -27,12 +27,6 @@ def plot_bs_vertical_grouped_stacked(
     valid_font = validate_font(font_path)
     font_prop = fm.FontProperties(fname=valid_font)
     
-    # データ検証
-    required_sections = ["資産", "負債・純資産"]
-    for section in required_sections:
-        if section not in bs_data:
-            raise ValueError(f"必須セクション '{section}' が存在しません")
-    
     # データ加工
     df_assets = pd.DataFrame(bs_data["資産"], index=years)
     df_liabilities = pd.DataFrame(bs_data["負債・純資産"], index=years)
@@ -62,18 +56,13 @@ def plot_profit_step_only(
     valid_font = validate_font(font_path)
     font_prop = fm.FontProperties(fname=valid_font)
     
-    # データ検証
-    required_keys = ["売上総利益", "営業利益", "経常利益", "税引前当期純利益", "当期純利益"]
-    missing = [k for k in required_keys if k not in df_middle]
-    if missing:
-        raise ValueError(f"必須項目不足: {missing}")
-    
     # データ加工
-    values = [df_middle[k]["当期"] for k in required_keys]
+    values = [df_middle[k]["当期"] for k in df_middle]
+    labels = list(df_middle.keys())
     
     # 可視化
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(required_keys, values)
+    ax.bar(labels, values)
     
     # 書式設定
     ax.set_title("利益ステップグラフ", fontproperties=font_prop)
@@ -95,10 +84,6 @@ def plot_cf_waterfall_labeled(
     # フォント検証
     valid_font = validate_font(font_path)
     font_prop = fm.FontProperties(fname=valid_font)
-    
-    # データ検証
-    if len(cf_values) < 3:
-        raise ValueError("最低3つのキャッシュフロー項目が必要です")
     
     # データ加工
     labels = [item["label"] for item in cf_values]

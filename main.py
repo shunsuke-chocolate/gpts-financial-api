@@ -58,12 +58,8 @@ async def generate_bs_graph(data: BSInput):
             data.title
         )
         return {"image_path": image_path}
-    except FileNotFoundError as e:
-        raise HTTPException(400, detail=f"フォントエラー: {str(e)}")
-    except KeyError as e:
-        raise HTTPException(400, detail=f"必須データ不足: {str(e)}")
     except Exception as e:
-        raise HTTPException(500, detail=f"内部エラー: {str(e)}")
+        raise HTTPException(500, detail=str(e))
 
 @app.post("/plot_profit_step")
 async def generate_profit_graph(data: ProfitStepInput):
@@ -76,7 +72,7 @@ async def generate_profit_graph(data: ProfitStepInput):
         image_path = plot_profit_step_only(data.df_middle, data.font_path)
         return {"image_path": image_path}
     except Exception as e:
-        raise HTTPException(500, detail=f"グラフ生成エラー: {str(e)}")
+        raise HTTPException(500, detail=str(e))
 
 @app.post("/plot_cf")
 async def generate_cf_graph(data: CFInput):
@@ -87,17 +83,15 @@ async def generate_cf_graph(data: CFInput):
             data.title
         )
         return {"image_path": image_path}
-    except KeyError as e:
-        raise HTTPException(400, detail=f"不正なデータ形式: {str(e)}")
-    except ValueError as e:
-        raise HTTPException(400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
 
 @app.post("/parse_pdf")
 async def parse_financial_pdf(pdf_url: str):
     try:
         return extract_structured_financial_data(pdf_url)
     except Exception as e:
-        raise HTTPException(500, detail=f"PDF解析エラー: {str(e)}")
+        raise HTTPException(500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
