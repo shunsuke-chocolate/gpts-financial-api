@@ -7,7 +7,6 @@ def extract_structured_financial_data(pdf_path: str) -> Dict:
     doc = fitz.open(pdf_path)
     text = "\n".join([page.get_text() for page in doc])
     
-    # 正規表現パターンの最適化
     patterns = {
         "流動資産合計": r"流動資産合計\s*([\d,]+)",
         "固定資産合計": r"固定資産合計\s*([\d,]+)",
@@ -21,11 +20,10 @@ def extract_structured_financial_data(pdf_path: str) -> Dict:
     result = {}
     for key, pattern in patterns.items():
         match = re.search(pattern, text)
-        if match:
-            value = int(match.group(1).replace(",", ""))
-            result[key] = value
-        else:
+        if not match:
             raise ValueError(f"{key} の値を抽出できませんでした")
+        value = int(match.group(1).replace(",", ""))
+        result[key] = value
     
     return {
         "balance_sheet": {
