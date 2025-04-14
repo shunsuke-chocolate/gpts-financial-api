@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, Field, validator
+from typing import List, Dict, Optional
 import uvicorn
-from typing import Optional, List, Dict
 from financial_graph_generators import (
     plot_bs_vertical_grouped_stacked,
     plot_profit_step_only,
@@ -9,23 +9,33 @@ from financial_graph_generators import (
 )
 from financial_pdf_parser import extract_structured_financial_data
 
-app = FastAPI()
+app = FastAPI(title="Financial Graph API", version="1.0.0")
 
-# データモデル定義
+# -------- データモデル定義 --------
 class BSInput(BaseModel):
-    bs_data: dict = Field(..., example={
-        "資産": {"流動資産": 50000, "固定資産": 100000},
-        "負債・純資産": {"流動負債": 30000, "固定負債": 70000, "純資産": 50000}
-    })
+    bs_data: Dict[str, Dict[str, float]] = Field(...,
+        example={
+            "資産": {"流動資産": 50000, "固定資産": 100000},
+            "負債・純資産": {"流動負債": 30000, "固定負債": 70000, "純資産": 50000}
+        })
     years: List[str] = Field(..., min_items=1)
     font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
     title: Optional[str] = "貸借対照表"
 
+    @validator('bs_data')
+    def validate_bs_data(cls, v):
+        required_sections = ["資産", "負債・純資産"]
+        for section in required_sections:
+            if section not in v:
+                raise ValueError(f"必須セクション '{section}' が存在しません")
+        return v
+
 class ProfitStepInput(BaseModel):
-    df_middle: dict = Field(..., example={
-        "売上総利益": {"当期": 50000},
-        "営業利益": {"当期": 30000}
-    })
+    df_middle: Dict[str, Dict[str, float]] = Field(...,
+        example={
+            "売上総利益": {"当期": 50000},
+            "営業利益": {"当期": 30000}
+        })
     font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
 
 class CFItem(BaseModel):
@@ -37,7 +47,7 @@ class CFInput(BaseModel):
     font_path: Optional[str] = "./NotoSerifJP-Regular.ttf"
     title: Optional[str] = "キャッシュフロー分析"
 
-# エンドポイント実装
+# -------- APIエンドポイント --------
 @app.post("/plot_bs")
 async def generate_bs_graph(data: BSInput):
     try:
@@ -48,8 +58,10 @@ async def generate_bs_graph(data: BSInput):
             data.title
         )
         return {"image_path": image_path}
-    except ValueError as e:
-        raise HTTPException(400, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(400, detail=f"フォントエラー: {str(e)}")
+    except Exception as e:
+        raise HTTPException(500, detail=f"内部エラー: {str(e)}")
 
 @app.post("/plot_profit_step")
 async def generate_profit_graph(data: ProfitStepInput):
@@ -58,31 +70,16 @@ async def generate_profit_graph(data: ProfitStepInput):
     if missing:
         raise HTTPException(400, detail=f"必須項目不足: {missing}")
     
-    image_path = plot_profit_step_only(data.df_middle, data.font_path)
-    return {"image_path": image_path}
-
-@app.post("/plot_cf")
-async def generate_cf_graph(data: CFInput):
     try:
-        image_path = plot_cf_waterfall_labeled(
-            [item.dict() for item in data.cf_values],
-            data.font_path,
-            data.title
-        )
+        image_path = plot_profit_step_only(data.df_middle, data.font_path)
         return {"image_path": image_path}
-    except KeyError as e:
-        raise HTTPException(400, detail=f"不正なデータ形式: {str(e)}")
+    except Exception as e:
+        raise HTTPException(500, detail=f"グラフ生成エラー: {str(e)}")
 
-# PDF解析エンドポイント
 @app.post("/parse_pdf")
 async def parse_financial_pdf(pdf_url: str):
     try:
-        financial_data = extract_structured_financial_data(pdf_url)
-        return {
-            "bs_data": financial_data["balance_sheet"],
-            "profit_data": financial_data["profit_statement"],
-            "cf_data": financial_data["cash_flow"]
-        }
+        return extract_structured_financial_data(pdf_url)
     except Exception as e:
         raise HTTPException(500, detail=f"PDF解析エラー: {str(e)}")
 

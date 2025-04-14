@@ -7,6 +7,7 @@ def extract_structured_financial_data(pdf_path: str) -> Dict:
     doc = fitz.open(pdf_path)
     text = "\n".join([page.get_text() for page in doc])
     
+    # 正規表現パターンの最適化
     patterns = {
         "流動資産合計": r"流動資産合計\s*([\d,]+)",
         "固定資産合計": r"固定資産合計\s*([\d,]+)",
@@ -23,22 +24,23 @@ def extract_structured_financial_data(pdf_path: str) -> Dict:
         if match:
             value = int(match.group(1).replace(",", ""))
             result[key] = value
+        else:
+            raise ValueError(f"{key} の値を抽出できませんでした")
     
-    # データ構造化
     return {
         "balance_sheet": {
             "資産": {
-                "流動資産": result.get("流動資産合計", 0),
-                "固定資産": result.get("固定資産合計", 0)
+                "流動資産": result["流動資産合計"],
+                "固定資産": result["固定資産合計"]
             },
             "負債・純資産": {
-                "流動負債": result.get("流動負債合計", 0),
-                "固定負債": result.get("固定負債合計", 0),
-                "純資産": result.get("純資産合計", 0)
+                "流動負債": result["流動負債合計"],
+                "固定負債": result["固定負債合計"],
+                "純資産": result["純資産合計"]
             }
         },
         "profit_statement": {
-            "営業利益": result.get("営業利益", 0),
-            "当期純利益": result.get("当期純利益", 0)
+            "営業利益": result["営業利益"],
+            "当期純利益": result["当期純利益"]
         }
     }

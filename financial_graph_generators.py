@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
-from typing import Dict, List
 from matplotlib import font_manager as fm
 
 def validate_font(font_path: str) -> str:
@@ -19,21 +18,14 @@ def plot_bs_vertical_grouped_stacked(
     font_path: str = "./NotoSerifJP-Regular.ttf",
     title: str = ""
 ) -> str:
-    """貸借対照表グラフ生成（検証済み）"""
-    # データ検証
-    required_sections = ["資産", "負債・純資産"]
-    for section in required_sections:
-        if section not in bs_data:
-            raise ValueError(f"必須セクション不足: {section}")
-
-    # フォント設定
+    # フォント検証
     valid_font = validate_font(font_path)
     font_prop = fm.FontProperties(fname=valid_font)
-
+    
     # データ加工
     df_assets = pd.DataFrame(bs_data["資産"], index=years)
     df_liabilities = pd.DataFrame(bs_data["負債・純資産"], index=years)
-
+    
     # 可視化
     fig, ax = plt.subplots(figsize=(12, 7))
     df_assets.plot(kind='bar', stacked=True, ax=ax, position=0, width=0.4)
@@ -50,5 +42,3 @@ def plot_bs_vertical_grouped_stacked(
     plt.savefig(output_path, bbox_inches='tight')
     plt.close()
     return output_path
-
-# 他のグラフ関数も同様に強化
