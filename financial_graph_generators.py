@@ -27,6 +27,12 @@ def plot_bs_vertical_grouped_stacked(
     valid_font = validate_font(font_path)
     font_prop = fm.FontProperties(fname=valid_font)
     
+    # データ検証
+    required_sections = ["資産", "負債・純資産"]
+    for section in required_sections:
+        if section not in bs_data:
+            raise ValueError(f"必須セクション '{section}' が存在しません")
+    
     # データ加工
     df_assets = pd.DataFrame(bs_data["資産"], index=years)
     df_liabilities = pd.DataFrame(bs_data["負債・純資産"], index=years)
