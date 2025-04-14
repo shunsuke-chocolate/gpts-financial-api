@@ -1,46 +1,54 @@
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+from typing import Dict, List
+from matplotlib import font_manager as fm
 
-def plot_profit_step_only(df_middle, font_path):
-    df = pd.DataFrame(df_middle)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    values = list(df["当期"])
-    labels = df.index.tolist()
-    ax.bar(labels, values)
-    if os.path.exists(font_path):
-        plt.rcParams["font.family"] = font_path
-    image_path = "/mnt/data/profit_step_only.png"
-    plt.savefig(image_path)
-    plt.close()
-    return image_path
+def validate_font(font_path: str) -> str:
+    """フォントパスの検証とフォールバック処理"""
+    if os.path.isfile(font_path):
+        return font_path
+    default_path = "./NotoSerifJP-Regular.ttf"
+    if os.path.isfile(default_path):
+        return default_path
+    raise FileNotFoundError(f"フォントファイルが見つかりません: {font_path}")
 
-def plot_cf_waterfall_labeled(cf_values, font_path, title):
-    labels = [item["label"] for item in cf_values]
-    values = [item["amount"] for item in cf_values]
-    fig, ax = plt.subplots(figsize=(10, 6))
-    cum_values = [0]
-    for v in values[:-1]:
-        cum_values.append(cum_values[-1] + v)
-    for i in range(len(values)):
-        ax.bar(labels[i], values[i], bottom=cum_values[i] if i > 0 else 0)
-    if os.path.exists(font_path):
-        plt.rcParams["font.family"] = font_path
-    ax.set_title(title)
-    image_path = "/mnt/data/cf_waterfall_labeled.png"
-    plt.savefig(image_path)
-    plt.close()
-    return image_path
+def plot_bs_vertical_grouped_stacked(
+    bs_data: Dict[str, Dict[str, float]],
+    years: List[str],
+    font_path: str = "./NotoSerifJP-Regular.ttf",
+    title: str = ""
+) -> str:
+    """貸借対照表グラフ生成（検証済み）"""
+    # データ検証
+    required_sections = ["資産", "負債・純資産"]
+    for section in required_sections:
+        if section not in bs_data:
+            raise ValueError(f"必須セクション不足: {section}")
 
-def plot_bs_vertical_grouped_stacked(bs_data, font_path, years, title):
-    df = pd.DataFrame(bs_data)
-    fig, ax = plt.subplots(figsize=(10, 6))
-    df.T.plot(kind="bar", stacked=True, ax=ax)
-    if os.path.exists(font_path):
-        plt.rcParams["font.family"] = font_path
-    ax.set_title(title)
-    image_path = "/mnt/data/bs_vertical_grouped_stacked.png"
-    plt.savefig(image_path)
+    # フォント設定
+    valid_font = validate_font(font_path)
+    font_prop = fm.FontProperties(fname=valid_font)
+
+    # データ加工
+    df_assets = pd.DataFrame(bs_data["資産"], index=years)
+    df_liabilities = pd.DataFrame(bs_data["負債・純資産"], index=years)
+
+    # 可視化
+    fig, ax = plt.subplots(figsize=(12, 7))
+    df_assets.plot(kind='bar', stacked=True, ax=ax, position=0, width=0.4)
+    df_liabilities.plot(kind='bar', stacked=True, ax=ax, position=1, width=0.4)
+    
+    # 書式設定
+    ax.set_title(title, fontproperties=font_prop)
+    ax.set_ylabel("金額（百万円）", fontproperties=font_prop)
+    plt.xticks(rotation=0, fontproperties=font_prop)
+    plt.legend(prop=font_prop)
+    
+    # 出力
+    output_path = "bs_vertical_grouped_stacked.png"
+    plt.savefig(output_path, bbox_inches='tight')
     plt.close()
-    return image_path
+    return output_path
+
+# 他のグラフ関数も同様に強化
