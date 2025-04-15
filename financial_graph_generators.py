@@ -1,83 +1,104 @@
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
+import os
+import urllib.request
+
+def ensure_font(font_path):
+    if not os.path.exists(font_path):
+        FONT_URL = "https://raw.githubusercontent.com/shunsuke-chocolate/gpts-financial-api/main/NotoSerifJP-Regular.ttf"
+        urllib.request.urlretrieve(FONT_URL, font_path)
+
 
 def generate_balance_sheet_graph(font_path, output_path):
+    ensure_font(font_path)
     fp = FontProperties(fname=font_path)
-    assets = {"流動資産": 280890, "固定資産": 299094}
-    liabilities = {"流動負債": 236616, "固定負債": 88882, "純資産": 254486}
+    
+    categories = ["流動資産", "固定資産", "流動負債", "固定負債", "純資産"]
+    values = [500000, 300000, 200000, 100000, 500000]
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.bar("資産", assets["流動資産"], label="流動資産")
-    ax.bar("資産", assets["固定資産"], bottom=assets["流動資産"], label="固定資産")
-
-    ax.bar("負債・純資産", liabilities["流動負債"], label="流動負債")
-    bottom = liabilities["流動負債"]
-    ax.bar("負債・純資産", liabilities["固定負債"], bottom=bottom, label="固定負債")
-    bottom += liabilities["固定負債"]
-    ax.bar("負債・純資産", liabilities["純資産"], bottom=bottom, label="純資産")
-
-    ax.set_title("貸借対照表", fontproperties=fp)
-    ax.set_ylabel("金額（百万円）", fontproperties=fp)
-    ax.legend(prop=fp)
-    plt.xticks(fontproperties=fp)
-    plt.yticks(fontproperties=fp)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(["資産合計"]*2 + ["負債・純資産"]*3, values, color=["skyblue", "skyblue", "salmon", "salmon", "lightgreen"])
+    ax.set_title("貸借対照表（百万円）", fontproperties=fp)
+    ax.set_ylabel("金額", fontproperties=fp)
+    ax.set_xticklabels(categories, fontproperties=fp, rotation=45)
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
 
-def generate_profit_step_chart(font_path, output_path):
+
+def generate_profit_waterfall_chart(font_path, output_path):
+    ensure_font(font_path)
     fp = FontProperties(fname=font_path)
-    steps = {
-        "売上総利益": 5000,
-        "営業利益": 3000,
-        "経常利益": 2000,
-        "税引前当期純利益": 1500,
-        "当期純利益": 1000
+
+    raw_values = {
+        "売上高": 1285005,
+        "売上原価": -894648,
+        "販管費": -353947,
+        "営業外収益": 6134,
+        "営業外費用": -1706,
+        "特別利益": 154,
+        "特別損失": -14714,
+        "法人税等合計": -11938,
+        "当期純利益": 34140,
     }
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    x = list(steps.keys())
-    y = [steps[x[0]]]
-    for i in range(1, len(x)):
-        y.append(steps[x[i]] - steps[x[i-1]])
-    cumulative = [steps[x[0]]]
-    for i in range(1, len(y)):
-        cumulative.append(cumulative[i-1] + y[i])
+    fig, ax = plt.subplots(figsize=(12, 6))
+    categories = list(raw_values.keys())
+    values = list(raw_values.values())
 
-    colors = ["green" if val >= 0 else "red" for val in y]
-    base = [0] + cumulative[:-1]
-    ax.bar(x, y, bottom=base, color=colors)
-    ax.set_title("損益計算書 ステップチャート", fontproperties=fp)
-    ax.set_ylabel("金額（百万円）", fontproperties=fp)
-    plt.xticks(fontproperties=fp, rotation=45)
+    cumulative = [0]
+    for v in values[:-1]:
+        cumulative.append(cumulative[-1] + v)
+    cumulative = cumulative[:-1]
+
+    colors = ['green' if val >= 0 else 'red' for val in values]
+    for i, (label, val, bottom) in enumerate(zip(categories, values, cumulative)):
+        ax.bar(label, val, bottom=bottom, color=colors[i])
+        ax.text(i, bottom + val / 2, f"{val:,.0f}", ha='center', va='center', fontproperties=fp, fontsize=10)
+
+    ax.set_title("2025年2月期 ウエルシア 損益計算書 滝チャート（百万円）", fontproperties=fp, fontsize=14)
+    ax.set_ylabel("金額", fontproperties=fp)
+    ax.set_xticks(range(len(categories)))
+    ax.set_xticklabels(categories, fontproperties=fp, rotation=45)
+    ax.tick_params(axis='y', labelsize=10)
     plt.yticks(fontproperties=fp)
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
+
 
 def generate_cashflow_waterfall_chart(font_path, output_path):
+    ensure_font(font_path)
     fp = FontProperties(fname=font_path)
-    flows = {
-        "期首残高": 3000,
-        "営業CF": 1500,
-        "投資CF": -1000,
-        "財務CF": -500
-    }
-    flows["期末残高"] = sum(flows.values())
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    keys = list(flows.keys())
-    values = [flows[key] for key in keys]
-    base = [0]
-    for i in range(1, len(values)):
-        base.append(base[i-1] + values[i-1])
+    labels = ["期首残高", "営業CF", "投資CF", "財務CF", "期末残高"]
+    values = [100000, 50000, -20000, -15000, 115000]
 
-    colors = ["gray", "blue", "orange", "green", "gray"]
-    ax.bar(keys, values, bottom=base, color=colors)
-    ax.set_title("キャッシュフロー計算書", fontproperties=fp)
-    ax.set_ylabel("金額（百万円）", fontproperties=fp)
-    plt.xticks(fontproperties=fp, rotation=45)
+    cumulative = [values[0]]
+    for v in values[1:-1]:
+        cumulative.append(cumulative[-1] + v)
+    cumulative = cumulative[:-1]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for i, (label, val, bottom) in enumerate(zip(labels[1:], values[1:-1], cumulative)):
+        ax.bar(label, val, bottom=bottom, color='blue' if val >= 0 else 'orange')
+        ax.text(i+1, bottom + val/2, f"{val:,.0f}", ha='center', va='center', fontproperties=fp)
+
+    ax.bar(labels[0], values[0], color='gray')
+    ax.text(0, values[0]/2, f"{values[0]:,.0f}", ha='center', va='center', fontproperties=fp)
+
+    ax.bar(labels[-1], values[-1], color='gray')
+    ax.text(len(labels)-1, values[-1]/2, f"{values[-1]:,.0f}", ha='center', va='center', fontproperties=fp)
+
+    ax.set_title("キャッシュフロー滝チャート（百万円）", fontproperties=fp)
+    ax.set_ylabel("金額", fontproperties=fp)
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, fontproperties=fp)
     plt.yticks(fontproperties=fp)
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
