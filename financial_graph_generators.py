@@ -1,116 +1,83 @@
 import matplotlib.pyplot as plt
-import pandas as pd
-import os
-from matplotlib import font_manager as fm
+from matplotlib.font_manager import FontProperties
 
-def validate_font(font_path: str) -> str:
-    """フォントパスの検証とフォールバック処理"""
-    font_paths = [
-        font_path,
-        "./NotoSerifJP-Regular.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSerifJP-Regular.otf",
-        "/System/Library/Fonts/Supplemental/NotoSerifJP-Regular.otf"
-    ]
-    
-    for fp in font_paths:
-        if os.path.isfile(fp):
-            return fp
-    raise FileNotFoundError(f"有効なフォントファイルが見つかりません: {font_paths}")
+def generate_balance_sheet_graph(font_path, output_path):
+    fp = FontProperties(fname=font_path)
+    assets = {"流動資産": 280890, "固定資産": 299094}
+    liabilities = {"流動負債": 236616, "固定負債": 88882, "純資産": 254486}
 
-def plot_bs_vertical_grouped_stacked(
-    bs_data: Dict[str, Dict[str, float]],
-    years: List[str],
-    font_path: str = "./NotoSerifJP-Regular.ttf",
-    title: str = ""
-) -> str:
-    # フォント検証
-    valid_font = validate_font(font_path)
-    font_prop = fm.FontProperties(fname=valid_font)
-    
-    # データ検証
-    required_sections = ["資産", "負債・純資産"]
-    for section in required_sections:
-        if section not in bs_data:
-            raise ValueError(f"必須セクション '{section}' が存在しません")
-    
-    # データ加工
-    df_assets = pd.DataFrame(bs_data["資産"], index=years)
-    df_liabilities = pd.DataFrame(bs_data["負債・純資産"], index=years)
-    
-    # 可視化
-    fig, ax = plt.subplots(figsize=(12, 7))
-    df_assets.plot(kind='bar', stacked=True, ax=ax, position=0, width=0.4)
-    df_liabilities.plot(kind='bar', stacked=True, ax=ax, position=1, width=0.4)
-    
-    # 書式設定
-    ax.set_title(title, fontproperties=font_prop)
-    ax.set_ylabel("金額（百万円）", fontproperties=font_prop)
-    plt.xticks(rotation=0, fontproperties=font_prop)
-    plt.legend(prop=font_prop)
-    
-    # 出力
-    output_path = "bs_vertical_grouped_stacked.png"
-    plt.savefig(output_path, bbox_inches='tight')
-    plt.close()
-    return output_path
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.bar("資産", assets["流動資産"], label="流動資産")
+    ax.bar("資産", assets["固定資産"], bottom=assets["流動資産"], label="固定資産")
 
-def plot_profit_step_only(
-    df_middle: Dict[str, Dict[str, float]],
-    font_path: str = "./NotoSerifJP-Regular.ttf"
-) -> str:
-    # フォント検証
-    valid_font = validate_font(font_path)
-    font_prop = fm.FontProperties(fname=valid_font)
-    
-    # データ加工
-    values = [df_middle[k]["当期"] for k in df_middle]
-    labels = list(df_middle.keys())
-    
-    # 可視化
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(labels, values)
-    
-    # 書式設定
-    ax.set_title("利益ステップグラフ", fontproperties=font_prop)
-    ax.set_ylabel("金額（百万円）", fontproperties=font_prop)
-    plt.xticks(rotation=45, fontproperties=font_prop)
+    ax.bar("負債・純資産", liabilities["流動負債"], label="流動負債")
+    bottom = liabilities["流動負債"]
+    ax.bar("負債・純資産", liabilities["固定負債"], bottom=bottom, label="固定負債")
+    bottom += liabilities["固定負債"]
+    ax.bar("負債・純資産", liabilities["純資産"], bottom=bottom, label="純資産")
+
+    ax.set_title("貸借対照表", fontproperties=fp)
+    ax.set_ylabel("金額（百万円）", fontproperties=fp)
+    ax.legend(prop=fp)
+    plt.xticks(fontproperties=fp)
+    plt.yticks(fontproperties=fp)
     plt.tight_layout()
-    
-    # 出力
-    output_path = "profit_step_only.png"
-    plt.savefig(output_path, bbox_inches='tight')
+    plt.savefig(output_path)
     plt.close()
-    return output_path
 
-def plot_cf_waterfall_labeled(
-    cf_values: List[Dict[str, float]],
-    font_path: str = "./NotoSerifJP-Regular.ttf",
-    title: str = ""
-) -> str:
-    # フォント検証
-    valid_font = validate_font(font_path)
-    font_prop = fm.FontProperties(fname=valid_font)
-    
-    # データ加工
-    labels = [item["label"] for item in cf_values]
-    amounts = [item["amount"] for item in cf_values]
-    
-    # 可視化
-    fig, ax = plt.subplots(figsize=(12, 7))
-    cumulative = 0
-    for i, (label, amount) in enumerate(zip(labels, amounts)):
-        color = "green" if amount >= 0 else "red"
-        ax.bar(label, amount, bottom=cumulative, color=color)
-        cumulative += amount
-    
-    # 書式設定
-    ax.set_title(title, fontproperties=font_prop)
-    ax.set_ylabel("金額（百万円）", fontproperties=font_prop)
-    plt.xticks(rotation=45, fontproperties=font_prop)
+def generate_profit_step_chart(font_path, output_path):
+    fp = FontProperties(fname=font_path)
+    steps = {
+        "売上総利益": 5000,
+        "営業利益": 3000,
+        "経常利益": 2000,
+        "税引前当期純利益": 1500,
+        "当期純利益": 1000
+    }
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    x = list(steps.keys())
+    y = [steps[x[0]]]
+    for i in range(1, len(x)):
+        y.append(steps[x[i]] - steps[x[i-1]])
+    cumulative = [steps[x[0]]]
+    for i in range(1, len(y)):
+        cumulative.append(cumulative[i-1] + y[i])
+
+    colors = ["green" if val >= 0 else "red" for val in y]
+    base = [0] + cumulative[:-1]
+    ax.bar(x, y, bottom=base, color=colors)
+    ax.set_title("損益計算書 ステップチャート", fontproperties=fp)
+    ax.set_ylabel("金額（百万円）", fontproperties=fp)
+    plt.xticks(fontproperties=fp, rotation=45)
+    plt.yticks(fontproperties=fp)
     plt.tight_layout()
-    
-    # 出力
-    output_path = "cf_waterfall_labeled.png"
-    plt.savefig(output_path, bbox_inches='tight')
+    plt.savefig(output_path)
     plt.close()
-    return output_path
+
+def generate_cashflow_waterfall_chart(font_path, output_path):
+    fp = FontProperties(fname=font_path)
+    flows = {
+        "期首残高": 3000,
+        "営業CF": 1500,
+        "投資CF": -1000,
+        "財務CF": -500
+    }
+    flows["期末残高"] = sum(flows.values())
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    keys = list(flows.keys())
+    values = [flows[key] for key in keys]
+    base = [0]
+    for i in range(1, len(values)):
+        base.append(base[i-1] + values[i-1])
+
+    colors = ["gray", "blue", "orange", "green", "gray"]
+    ax.bar(keys, values, bottom=base, color=colors)
+    ax.set_title("キャッシュフロー計算書", fontproperties=fp)
+    ax.set_ylabel("金額（百万円）", fontproperties=fp)
+    plt.xticks(fontproperties=fp, rotation=45)
+    plt.yticks(fontproperties=fp)
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
