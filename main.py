@@ -10,7 +10,10 @@ from financial_graph_generators import (
 app = FastAPI(
     title="財務三表グラフ生成API",
     description="決算書データをもとに財務三表のグラフを生成するAPI",
-    version="1.0.0"
+    version="1.0.0",
+    servers=[
+        {"url": "https://gpts-financial-api.onrender.com", "description": "Render上の本番環境"}
+    ]
 )
 
 # フォントパス（※ローカルにあるものを直接指定）
