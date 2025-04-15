@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 import os
-from financial_graph_generator import (
+from financial_graph_generators import (
     generate_balance_sheet_graph,
     generate_profit_step_chart,
     generate_cashflow_waterfall_chart
