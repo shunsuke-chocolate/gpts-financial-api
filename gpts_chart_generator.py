@@ -1,40 +1,39 @@
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
 from matplotlib.font_manager import FontProperties
-import os
 
-FONT_PATH = "./fonts/NotoSerifJP-Regular.ttf"
+def plot_profit_waterfall_chart(title, revenue, cogs, sg_and_a, op_income,
+                                non_op_income, non_op_expenses, ordinary_income,
+                                special_gains, special_losses, pre_tax_income,
+                                income_taxes, net_income, output_path):
 
-def get_font():
-    if os.path.exists(FONT_PATH):
-        return FontProperties(fname=FONT_PATH)
-    else:
-        return FontProperties()  # fallback
+    items = [
+        "売上高", "売上原価", "販管費", "営業利益",
+        "営業外収益", "営業外費用", "経常利益",
+        "特別利益", "特別損失", "税引前当期純利益",
+        "法人税等", "当期純利益"
+    ]
+    values = [
+        revenue, -cogs, -sg_and_a, op_income,
+        non_op_income, -non_op_expenses, ordinary_income,
+        special_gains, -special_losses, pre_tax_income,
+        -income_taxes, net_income
+    ]
 
-def plot_profit_waterfall_chart(pl_data: dict, title: str, output_path: str):
-    font_prop = get_font()
+    cum_values = [0]
+    for i in range(1, len(values)):
+        cum_values.append(cum_values[-1] + values[i - 1])
+
+    colors = ['#4caf50' if v >= 0 else '#f44336' for v in values]
+
     fig, ax = plt.subplots(figsize=(12, 6))
+    for i, (label, val, base) in enumerate(zip(items, values, cum_values)):
+        ax.bar(label, val, bottom=base, color=colors[i])
+        y = base + val if val > 0 else base
+        ax.text(i, y, f"{val:,}", ha='center', va='bottom' if val > 0 else 'top', fontsize=10)
 
-    labels = list(pl_data.keys())
-    values = list(pl_data.values())
-    cumulative = [0]
-    for v in values[:-1]:
-        cumulative.append(cumulative[-1] + v)
-    cumulative = cumulative[:-1]
-    colors = ['green' if val >= 0 else 'red' for val in values]
-
-    for i, (label, val, bottom) in enumerate(zip(labels, values, cumulative)):
-        ax.bar(label, val, bottom=bottom, color=colors[i])
-        ax.text(i, bottom + val / 2, f"{val:,.0f}", ha='center', va='center',
-                fontproperties=font_prop, fontsize=10)
-
-    ax.set_title(title, fontproperties=font_prop, fontsize=14)
-    ax.set_ylabel("金額（百万円）", fontproperties=font_prop)
-    ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(labels, fontproperties=font_prop, rotation=45)
-    ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{int(x):,}"))
-
-    plt.grid(axis='y', linestyle='--', alpha=0.6)
+    ax.set_title(title, fontsize=16)
+    ax.axhline(0, color='black', linewidth=0.8)
+    plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
