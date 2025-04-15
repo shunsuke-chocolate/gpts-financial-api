@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 import os
+import urllib.request
 from financial_graph_generators import (
     generate_balance_sheet_graph,
     generate_profit_step_chart,
@@ -16,8 +17,20 @@ app = FastAPI(
     ]
 )
 
-# フォントパス（※ローカルにあるものを直接指定）
+# 📌 フォントパスとURL（GitHubから取得）
 FONT_PATH = "./NotoSerifJP-Regular.ttf"
+FONT_URL = "https://raw.githubusercontent.com/shunsuke-chocolate/gpts-financial-api/main/NotoSerifJP-Regular.ttf"
+
+# フォントが存在しない場合は自動でダウンロード
+if not os.path.exists(FONT_PATH):
+    try:
+        print("📥 フォントファイルが見つかりません。ダウンロード中...")
+        urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+        print("✅ フォントを取得しました。")
+    except Exception as e:
+        print(f"⚠️ フォントの取得に失敗しました: {e}")
+
+# 出力ディレクトリの作成
 os.makedirs("output", exist_ok=True)
 
 @app.get("/graph/balance-sheet")
